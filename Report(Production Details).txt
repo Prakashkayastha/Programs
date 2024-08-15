@@ -1,0 +1,299 @@
+1-> INCLUDE ZPP_PK_DATADECLARATION.
+
+ DATA: LV_AUFNR TYPE AUFNR,
+      LV_BUKRS TYPE BUKRS,
+      LV_MATNR TYPE MATNR,
+      LV_WERKS TYPE WERKS,
+      LT_FINAL TYPE TABLE OF ZPP_FINAL_PRODOCTIONDETAILS,
+      LS_FIELDCAT TYPE SLIS_T_FIELDCAT_ALV.
+
+2-> INCLUDE ZPP_PK_SELECTIONSCREEN.
+
+ SELECTION-SCREEN : BEGIN OF BLOCK B1 WITH FRAME TITLE TEXT-001.
+  SELECT-OPTIONS:  S_AUFNR FOR LV_AUFNR OBLIGATORY,
+                   S_BUKRS FOR LV_BUKRS NO INTERVALS NO-EXTENSION,
+                   S_WERKS FOR LV_WERKS NO INTERVALS NO-EXTENSION.
+
+  PARAMETERS: P_R1 TYPE C RADIOBUTTON GROUP R1, "DEFAULT 'X',
+              P_R2 TYPE C RADIOBUTTON GROUP R1.
+
+
+  SELECTION-SCREEN : END OF BLOCK B1.
+
+3-> INCLUDE ZPP_PK_SUBROUTINES. 
+
+ START-OF-SELECTION.
+  PERFORM get_data.
+
+END-OF-SELECTION.
+
+  PERFORM Display.
+
+4-> INCLUDE ZPP_PK_QUERYSUB_FORM.
+ * FORM GET_DATA
+   FORM get_data.
+
+
+*  SELECT aufnr,
+*         bukrs,
+*         werks
+*    FROM aufk
+*    INTO TABLE @DATA(lt_aufk)
+*   WHERE aufnr IN @s_aufnr AND bukrs IN @s_bukrs.
+
+
+SELECT a~aufnr ,
+       a~bukrs,
+       a~werks,
+       b~rsnum,
+       b~rspos,
+       b~matnr,
+       b~lgort,
+       b~charg,
+       b~bdmng,
+       b~meins
+       FROM aufk AS a
+       INNER JOIN resb AS b
+       ON a~aufnr = b~aufnr
+       WHERE BUKRS IN @S_BUKRS
+       INTO TABLE @DATA(LT_RESB).
+
+  IF lt_resb[] IS NOT INITIAL.
+    SELECT aufnr,
+           matnr,
+           pgmng,
+           meins,
+           ltrmi
+      FROM afpo
+      INTO TABLE @DATA(lt_afpo)
+       FOR ALL ENTRIES IN @lt_resb
+     WHERE aufnr = @lt_resb-aufnr  .
+  ENDIF.
+
+
+  IF lt_afpo[] IS NOT INITIAL.
+    SELECT matnr,
+           maktx
+      FROM makt
+      INTO TABLE @DATA(lt_makt)
+      FOR ALL ENTRIES IN @lt_afpo
+      WHERE matnr = @lt_afpo-matnr.
+  ENDIF.
+
+
+*
+*  IF lt_aufk[] IS NOT INITIAL.
+*    SELECT aufnr,
+*           rsnum,
+*           rspos,
+*           matnr,
+*           lgort,
+*           charg,
+*           bdmng,
+*           meins
+*      FROM resb
+*      INTO TABLE @DATA(lt_resb)
+*      FOR ALL ENTRIES IN @lt_aufk
+*      WHERE aufnr = @lt_aufk-aufnr.
+*  ENDIF.
+
+
+  IF lt_resb IS NOT INITIAL.
+    SELECT matnr,
+           maktx
+      FROM makt
+      INTO TABLE @DATA(LT_MAKT_bom)
+      FOR ALL ENTRIES IN @LT_resb
+      WHERE matnr = @LT_resb-matnr.
+  ENDIF.
+
+  LT_FINAL = VALUE #( FOR WA_RESB IN LT_RESB
+                     FOR WA_AFPO IN LT_AFPO
+                     ( AUFNR = |{ VALUE #( lt_resb[ AUFNR = wa_resb-AUFNR ]-aufnr OPTIONAL ) ALPHA = OUT }|
+                       BUKRS = VALUE #( LT_resb[ AUFNR = WA_RESB-AUFNR ]-BUKRS OPTIONAL )
+                       WERKS = VALUE #( LT_resb[ AUFNR = WA_RESB-AUFNR ]-WERKS OPTIONAL )
+                       RSNUM = WA_RESB-RSNUM
+                       RSPOS = WA_RESB-RSPOS
+                       LGORT = WA_RESB-LGORT
+                       CHARG = WA_RESB-CHARG
+                       BDMNG = WA_RESB-BDMNG
+                       MATNR_BOM = |{ WA_RESB-MATNR ALPHA = OUT }|
+                       MAKTX = VALUE #( LT_MAKT[ MATNR = WA_AFPO-MATNR ]-MAKTX OPTIONAL )
+                       MATNR = |{ WA_AFPO-MATNR ALPHA = out }|
+                       PGMNG = WA_AFPO-PGMNG
+                       MEINS = WA_AFPO-MEINS
+                       LTRMI = WA_AFPO-LTRMI
+                       MAKTX_BOM =  VALUE #( LT_MAKT_BOM[ MATNR = WA_RESB-MATNR ]-MAKTX OPTIONAL )
+                      )
+                    ).
+
+
+ENDFORM.
+
+ * FORM DISPLAY_DATA.
+   ls_fieldcat = VALUE #( BASE ls_fieldcat[]
+                           (
+                            fieldname ='AUFNR'
+                            seltext_l = 'Order Number'
+                            seltext_m = 'Ord No.'
+                            seltext_s = 'OrNo.'
+*                           W_FIELDCATALOG-NO_ZERO = 'X'
+                            )
+                           (
+                            fieldname ='BUKRS'
+                            seltext_l ='Company Code'
+                            seltext_m ='Comp Cod.'
+                            seltext_s ='ComCod.'
+                            )
+                           (
+                            fieldname ='WERKS'
+                            seltext_l ='Plant'
+                            seltext_m ='Plant'
+                            seltext_s ='Plant'
+                            )
+                           (
+                            fieldname ='MATNR'
+                            seltext_l ='Material Number'
+                            seltext_m ='Matr No.'
+                            seltext_s ='Mat No.'
+                            )
+                            (
+                            fieldname ='MAKTX'
+                            seltext_l ='Material Description'
+                            seltext_m ='Matr Des.'
+                            seltext_s ='Mat Des.'
+                            )
+                            (
+                            fieldname ='PGMNG'
+                            seltext_l ='Planned Order'
+                            seltext_m ='Plan Ord.'
+                            seltext_s ='Plan Or.'
+                            )
+                            (
+                            fieldname ='MEINS'
+                            seltext_l ='Unit'
+                            seltext_m ='Unit'
+                            seltext_s ='Unit'
+                            )
+                           (
+                            fieldname ='LTRMI'
+                            seltext_l ='Actual Delivery'
+                            seltext_m ='Act Del.'
+                            seltext_s ='Act Del.'
+                            )
+                           (
+                            fieldname ='RSNUM'
+                            seltext_l ='Reservation Number'
+                            seltext_m ='Resv No.'
+                            seltext_s ='Res No.'
+                            )
+                           (
+                            fieldname ='RSPOS'
+                            seltext_l ='Reservation Item Number'
+                            seltext_m ='Res Itm No.'
+                            seltext_s ='Res It No.'
+                            )
+                           (
+                            fieldname ='MATNR_BOM'
+                            seltext_l ='Bom Material'
+                            seltext_m ='Bom Mat No.'
+                            seltext_s ='Bom Mt No.'
+                            )
+                           (
+                            fieldname ='MAKTX_BOM'
+                            seltext_l ='Bom Description'
+                            seltext_m ='Bom Desc.'
+                            seltext_s ='Bom Des.'
+                            )
+                           (
+                            fieldname ='LGORT'
+                            seltext_l ='Storage Location'
+                            seltext_m ='Strg Loc.'
+                            seltext_s ='Stg Loc.'
+                            )
+                           (
+                            fieldname ='CHARG'
+                            seltext_l ='Batch'
+                            seltext_m ='Batch'
+                            seltext_s ='Batch'
+                            )
+                           (
+                            fieldname ='BDMNG'
+                            seltext_l ='Requirement Qty'
+                            seltext_m ='Req Qty.'
+                            seltext_s ='Req Qt.'
+                            )
+                           (
+                           fieldname ='MEINS'
+                            seltext_l ='Unit'
+                            seltext_m ='Unit'
+                            seltext_s ='Unit'
+                            )
+                          ).
+   LOOP AT LS_FIELDCAT INTO DATA(WA_FIELDCAT).
+     IF P_R1 = 'X'.
+       IF WA_FIELDCAT-FIELDNAME = 'MATNR_BOM'.
+         WA_FIELDCAT-NO_OUT = 'X'.
+       ENDIF.
+
+       IF WA_FIELDCAT-FIELDNAME ='MAKTX_BOM'.
+         WA_FIELDCAT-NO_OUT = 'X'.
+       ENDIF.
+       MODIFY LS_FIELDCAT FROM WA_FIELDCAT.
+     ENDIF.
+   ENDLOOP.
+
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+*     I_INTERFACE_CHECK        = ' '
+*     I_BYPASSING_BUFFER       = ' '
+*     I_BUFFER_ACTIVE          = ' '
+      i_callback_program       = sy-repid
+      i_callback_pf_status_set = 'PF_STATUS'
+*     I_CALLBACK_USER_COMMAND  = ' '
+*     I_CALLBACK_TOP_OF_PAGE   = ' '
+*     I_CALLBACK_HTML_TOP_OF_PAGE       = ' '
+*     I_CALLBACK_HTML_END_OF_LIST       = ' '
+*     I_STRUCTURE_NAME         =
+*     I_BACKGROUND_ID          = ' '
+*     I_GRID_TITLE             =
+*     I_GRID_SETTINGS          =
+*     IS_LAYOUT                =
+      it_fieldcat              = ls_fieldcat
+*     IT_EXCLUDING             =
+*     IT_SPECIAL_GROUPS        =
+*     IT_SORT                  =
+*     IT_FILTER                =
+*     IS_SEL_HIDE              =
+*     I_DEFAULT                = 'X'
+*     I_SAVE                   = ' '
+*     IS_VARIANT               =
+*     IT_EVENTS                =
+*     IT_EVENT_EXIT            =
+*     IS_PRINT                 =
+*     IS_REPREP_ID             =
+*     I_SCREEN_START_COLUMN    = 0
+*     I_SCREEN_START_LINE      = 0
+*     I_SCREEN_END_COLUMN      = 0
+*     I_SCREEN_END_LINE        = 0
+*     I_HTML_HEIGHT_TOP        = 0
+*     I_HTML_HEIGHT_END        = 0
+*     IT_ALV_GRAPHICS          =
+*     IT_HYPERLINK             =
+*     IT_ADD_FIELDCAT          =
+*     IT_EXCEPT_QINFO          =
+*     IR_SALV_FULLSCREEN_ADAPTER        =
+*     O_PREVIOUS_SRAL_HANDLER  =
+*   IMPORTING
+*     E_EXIT_CAUSED_BY_CALLER  =
+*     ES_EXIT_CAUSED_BY_USER   =
+    TABLES
+      t_outtab                 = lt_final
+    EXCEPTIONS
+      program_error            = 1
+      OTHERS                   = 2.
+  .
+  IF sy-subrc <> 0.
+* Implement suitable error handling here
+  ENDIF.
+ENDFORM.

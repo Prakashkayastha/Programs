@@ -1,0 +1,258 @@
+
+*&---------------------------------------------------------------------*
+*& Report ZSD_PK_REPORT1
+*&---------------------------------------------------------------------*
+*&
+*&---------------------------------------------------------------------*
+REPORT ZSD_PK_REPORT1.
+DATA : LV_VBELN    TYPE VBELN,
+       LV_ERDAT    TYPE ERDAT,
+       LV_MATNR    TYPE MATNR,
+       LT_FINAL    TYPE TABLE OF ZST_FINAL_SALESTABLE,
+       WA_FINAL    TYPE ZST_FINAL_SALESTABLE,
+       LS_FIELDCAT TYPE SLIS_T_FIELDCAT_ALV,
+       LS_LAYOUT   TYPE SLIS_LAYOUT_ALV.
+
+"Selection Screen
+
+
+SELECTION-SCREEN : BEGIN OF BLOCK B1 WITH FRAME TITLE TEXT-001.
+  SELECT-OPTIONS : S_VBELN FOR LV_VBELN,
+                   S_MATNR FOR LV_MATNR,
+                  S_ERDAT FOR LV_ERDAT.
+SELECTION-SCREEN : END OF BLOCK B1.
+
+"End Of Selection Screen
+S_ERDAT-LOW = SY-DATUM.
+
+START-OF-SELECTION.
+
+  SELECT VBELN,
+         ERDAT
+         FROM VBAK
+         INTO TABLE @DATA(LT_VBAK)
+  WHERE ERDAT IN @S_ERDAT.
+
+*IF LT_VBAK[] IS NOT INITIAL.
+* SELECT VBELN,
+*        POSNR,
+*        MATNR,
+*        KWMENG,
+*        NETPR
+*        FROM VBAP
+*        INTO TABLE @DATA(LT_VBAP)
+*        FOR ALL ENTRIES IN @LT_VBAK
+*        WHERE VBELN = @LT_VBAK-VBELN.
+*ENDIF.
+*
+*
+*IF LT_VBAP[] IS NOT INITIAL.
+* SELECT MATNR,
+*        MAKTX,
+*        SPRAS
+*        FROM MAKT
+*        INTO TABLE @DATA(LT_MAKT)
+*         FOR ALL ENTRIES IN @LT_VBAP
+*        WHERE MATNR = @LT_VBAP-MATNR
+*        AND SPRAS = @SY-LANGU.
+*ENDIF.
+  IF LT_VBAK IS NOT INITIAL.
+    SELECT A~VBELN,
+           A~POSNR,
+           A~MATNR,
+           A~KWMENG,
+           A~NETPR,
+           B~MAKTX,
+           B~SPRAS
+           FROM VBAP AS A
+           INNER JOIN MAKT AS B
+           ON A~MATNR = B~MATNR
+           FOR ALL ENTRIES IN @LT_VBAK
+           WHERE A~VBELN = @LT_VBAK-VBELN
+           AND B~SPRAS = @SY-LANGU
+    INTO TABLE @DATA(LT_RESULT).
+  ENDIF.
+
+END-OF-SELECTION.
+
+
+
+  "Looping
+*LT_FINAL = VALUE #( FOR WA_VBAK IN LT_VBAK
+*                    FOR WA_VBAP IN LT_VBAP
+*                    WHERE ( VBELN = WA_VBAK-VBELN )
+*                    ( VBELN = WA_VBAK-VBELN
+*                    ERDAT = WA_VBAK-ERDAT
+*                    POSNR = WA_VBAP-POSNR
+*                    MATNR = WA_VBAP-MATNR
+*                    KWMENG = WA_VBAP-KWMENG
+*                    NETPR = WA_VBAP-NETPR
+*                    MAKTX = VALUE #( LT_MAKT[ MATNR = WA_VBAP-MATNR ]-MAKTX OPTIONAL )
+*                    TOTALPRICE = WA_VBAP-KWMENG * WA_VBAP-NETPR
+*                    )
+*                    ).
+
+  LT_FINAL = VALUE #( FOR WA_VBAK IN LT_VBAK
+                      FOR WA_VBAP IN LT_RESULT
+                      WHERE ( VBELN = WA_VBAK-VBELN )
+                      ( VBELN = WA_VBAK-VBELN
+                      ERDAT = WA_VBAK-ERDAT
+                     POSNR = WA_VBAP-POSNR
+                     MATNR = WA_VBAP-MATNR
+                     KWMENG = WA_VBAP-KWMENG
+                     NETPR = WA_VBAP-NETPR
+                      MAKTX = VALUE #( LT_RESULT[ MATNR = WA_VBAP-MATNR ]-MAKTX OPTIONAL )
+                     TOTALPRICE = WA_VBAP-KWMENG * WA_VBAP-NETPR
+                     )
+                      ).
+  "Fieldcat
+  LS_FIELDCAT = VALUE #( BASE LS_FIELDCAT[]
+                          ( FIELDNAME = 'VBELN'
+                            SELTEXT_L = 'SALES ORDER'
+                            SELTEXT_M = 'SALES ORDER'
+                            SELTEXT_S = 'SALEORD'
+                            HOTSPOT = ABAP_TRUE
+                          )
+                          ( FIELDNAME = 'POSNR'
+                            SELTEXT_L = 'SALES ITEM'
+                            SELTEXT_M = 'SALES ITEM'
+                            SELTEXT_S = 'SALEITM'
+                          )
+                          ( FIELDNAME = 'MATNR'
+                            SELTEXT_L = 'MATERIAL'
+                            SELTEXT_M = 'MATERIAL'
+                            SELTEXT_S = 'MTRL'
+                          )
+                          ( FIELDNAME = 'MAKTX'
+                            SELTEXT_L = 'MATERIAL DESCRIPTION'
+                            SELTEXT_M = 'MATERIAL DESCRIPTION'
+                            SELTEXT_S = 'MAT_DESC'
+                          )
+                          ( FIELDNAME = 'KWMENG'
+                            SELTEXT_L = 'QUANTITY'
+                            SELTEXT_M = 'QUANTITY'
+                            SELTEXT_S = 'QUANT'
+                          )
+                          ( FIELDNAME = 'NETPR'
+                            SELTEXT_L = 'NET PRICE'
+                            SELTEXT_M = 'NET PRICE'
+                            SELTEXT_S = 'NETPR'
+                          )
+                          ( FIELDNAME = 'TOTALPRICE'
+                            SELTEXT_L = 'TOTAL PRICE'
+                            SELTEXT_M = 'TOTAL PRICE'
+                            SELTEXT_S = 'TOT_PR'
+                          )
+                          ( FIELDNAME = 'ERDAT'
+                            SELTEXT_L = 'CREATED DATE'
+                            SELTEXT_M = 'CREATED DATE'
+                            SELTEXT_S = 'CRT_DAT'
+                          )
+                          ).
+  LS_LAYOUT-ZEBRA = ABAP_TRUE.
+  CALL FUNCTION 'REUSE_ALV_GRID_DISPLAY'
+    EXPORTING
+*     I_INTERFACE_CHECK       = ' '
+*     I_BYPASSING_BUFFER      = ' '
+*     I_BUFFER_ACTIVE         = ' '
+      I_CALLBACK_PROGRAM      = SY-REPID
+*     I_CALLBACK_PF_STATUS_SET          = ' '
+      I_CALLBACK_USER_COMMAND = 'USER_COMMAND'
+*     I_CALLBACK_TOP_OF_PAGE  = ' '
+*     I_CALLBACK_HTML_TOP_OF_PAGE       = ' '
+*     I_CALLBACK_HTML_END_OF_LIST       = ' '
+*   I_STRUCTURE_NAME                  =' '
+*     I_BACKGROUND_ID         = ' '
+*     I_GRID_TITLE            =
+*     I_GRID_SETTINGS         =
+      IS_LAYOUT               = LS_LAYOUT
+      IT_FIELDCAT             = LS_FIELDCAT
+*     IT_EXCLUDING            =
+*     IT_SPECIAL_GROUPS       =
+*     IT_SORT                 =
+*     IT_FILTER               =
+*     IS_SEL_HIDE             =
+*     I_DEFAULT               = 'X'
+*     I_SAVE                  = ' '
+*     IS_VARIANT              =
+*     IT_EVENTS               =
+*     IT_EVENT_EXIT           =
+*     IS_PRINT                =
+*     IS_REPREP_ID            =
+*     I_SCREEN_START_COLUMN   = 0
+*     I_SCREEN_START_LINE     = 0
+*     I_SCREEN_END_COLUMN     = 0
+*     I_SCREEN_END_LINE       = 0
+*     I_HTML_HEIGHT_TOP       = 0
+*     I_HTML_HEIGHT_END       = 0
+*     IT_ALV_GRAPHICS         =
+*     IT_HYPERLINK            =
+*     IT_ADD_FIELDCAT         =
+*     IT_EXCEPT_QINFO         =
+*     IR_SALV_FULLSCREEN_ADAPTER        =
+*     O_PREVIOUS_SRAL_HANDLER =
+* IMPORTING
+*     E_EXIT_CAUSED_BY_CALLER =
+*     ES_EXIT_CAUSED_BY_USER  =
+    TABLES
+      T_OUTTAB                = LT_FINAL
+    EXCEPTIONS
+      PROGRAM_ERROR           = 1
+      OTHERS                  = 2.
+
+
+
+  IF SY-SUBRC <> 0.
+* Implement suitable error handling here
+  ENDIF.
+
+FORM USER_COMMAND USING P_UCOMM TYPE SY-UCOMM  "BUTTON DETAILS
+                        P_SELFIELD TYPE SLIS_SELFIELD.  "FIELD DETAILS
+  IF P_UCOMM = '&IC1'.
+    DATA : LV_FM_NAME TYPE  RS38L_FNAM.
+*    CALL TRANSACTION 'VA03' .
+    DATA(WA_SFSALES) = VALUE #( LT_FINAL[ VBELN = P_SELFIELD-VALUE ] OPTIONAL ).
+    CALL FUNCTION 'SSF_FUNCTION_MODULE_NAME'
+      EXPORTING
+        FORMNAME           = 'ZSF_PK_SALESDETAILS'
+*       VARIANT            = ' '
+*       DIRECT_CALL        = ' '
+      IMPORTING
+        FM_NAME            = LV_FM_NAME
+      EXCEPTIONS
+        NO_FORM            = 1
+        NO_FUNCTION_MODULE = 2
+        OTHERS             = 3.
+    IF SY-SUBRC <> 0.
+* Implement suitable error handling here
+    ENDIF.
+
+    CALL FUNCTION LV_FM_NAME            "'/1BCDWB/SF00000839'
+      EXPORTING
+*       ARCHIVE_INDEX     =
+*       ARCHIVE_INDEX_TAB =
+*       ARCHIVE_PARAMETERS         =
+*       CONTROL_PARAMETERS         =
+*       MAIL_APPL_OBJ     =
+*       MAIL_RECIPIENT    =
+*       MAIL_SENDER       =
+*       OUTPUT_OPTIONS    =
+        USER_SETTINGS     = 'X'
+        GWA_SALES_DETAILS = WA_SFSALES
+*   IMPORTING
+*       DOCUMENT_OUTPUT_INFO       =
+*       JOB_OUTPUT_INFO   =
+*       JOB_OUTPUT_OPTIONS         =
+*   EXCEPTIONS
+*       FORMATTING_ERROR  = 1
+*       INTERNAL_ERROR    = 2
+*       SEND_ERROR        = 3
+*       USER_CANCELED     = 4
+*       OTHERS            = 5
+      .
+    IF SY-SUBRC <> 0.
+* Implement suitable error handling here
+    ENDIF.
+
+  ENDIF.
+ENDFORM.

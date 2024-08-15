@@ -1,0 +1,70 @@
+MODULE user_command_9017 INPUT.
+
+data : lv_ofset1 type I VALUE 0,
+       lv_ofset2 type i VALUE 1.
+  CASE ok_code.
+   WHEN 'CHECK'.
+*      IF lv_strinput CA 'AEIOUaeiou'.
+*
+*      ENDIF.
+*     qwertyui   lv_strinput+8(1)
+     lv_testcount = 1.
+     data(lv_count) = strlen( lv_strinput ).
+     DO lv_count TIMES.
+
+       IF lv_strinput+lv_ofset1(lv_ofset2) ca 'AEIOUaeiou'.
+         lv_strvowels = lv_strvowels && lv_strinput+lv_ofset1(lv_ofset2).
+       else.
+         lv_strconso = lv_strconso && lv_strinput+lv_ofset1(lv_ofset2).
+       ENDIF.
+       lv_ofset1 = lv_ofset1 + 1 .
+     ENDDO.
+
+*      LOOP AT clike( lv_strinput ) INTO lv_char.
+*
+*        CASE lv_char.
+*          WHEN 'A' OR 'a' OR 'E' OR 'e' OR 'I' OR 'i'
+*                OR 'O' OR 'o' OR 'U' OR 'u'.
+*            lv_strvowels = lv_strvowels && lv_char.
+*          WHEN OTHERS.
+*            lv_strconso = lv_strconso && lv_char .
+*        ENDCASE.
+*
+*      ENDLOOP.
+
+
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+
+Suryakant(Character Check)
+MODULE user_command_9876 INPUT.
+
+  CASE ok_code.
+      WHEN 'CHECK'.
+       IF lv_input1 CA sy-abcde. " CA, CS, NA, CO,NO,NS
+         MESSAGE 'Enter Only Lowercase' type 'E'.
+       ENDIF.
+*      lv_lowercase = lv_input1.
+*      TRANSLATE lv_lowercase TO LOWER CASE.
+*      lv_uppercase = lv_input2.
+*      TRANSLATE lv_uppercase TO UPPER CASE.
+*
+*      IF lv_input1 = lv_lowercase.
+*        lv_input1 = 'Correct'.
+*      ELSE.
+*        lv_input1 = 'Enter Only Lowercase'.
+*
+*      ENDIF.
+*
+*      IF lv_input2 = lv_uppercase.
+*        lv_input2 = 'Correct'.
+*      ELSE.
+*        lv_input2 = 'Enter Only Uppercase'.
+*      ENDIF.
+**     WHEN .
+      WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.

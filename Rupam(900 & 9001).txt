@@ -1,0 +1,171 @@
+*&---------------------------------------------------------------------*
+*& Include          ZMP_RM_CONCATINATE_STRINGS_I01
+*&---------------------------------------------------------------------*
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_9000  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+9000 SCREEN
+
+MODULE user_command_9000 INPUT.
+  CASE ok_code.
+    WHEN 'ADD'.
+*      IF LV_INPUT1 ca '1234567890'.
+*        MESSAGE 'Invalid Input' type 'E'.
+*      ENDIF.
+      CONCATENATE lv_input1  lv_input2 INTO lv_output.
+    WHEN 'BACK' OR 'CANCEL' OR 'EXIT' .
+      LEAVE TO SCREEN 0.
+    WHEN OTHERS.
+  ENDCASE.
+
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  VALIDATION  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE validation INPUT.
+
+  IF lv_input1 CA '1234567890'.
+    DATA(lv_msg) = 'Invalid Input-' && lv_input1.
+    MESSAGE lv_msg TYPE sy-abcde+4(1).  "E
+  ENDIF.
+
+  IF lv_input2 CA '1234567890'.
+*     lv_msg = 'Invalid Input-' && lv_input2.
+*    MESSAGE lv_msg  TYPE SY-ABCDE+4(1). "'W' 'S' 'I'
+    MESSAGE e000(zmsg_igit) WITH lv_input2.
+  ENDIF.
+ENDMODULE.
+*&---------------------------------------------------------------------*
+*&      Module  USER_COMMAND_9001  INPUT
+*&---------------------------------------------------------------------*
+*       text
+*----------------------------------------------------------------------*
+MODULE user_command_9001 INPUT.
+
+  CASE ok_code.
+    WHEN 'DISP'.
+*      IF wa_mara-matnr IS NOT INITIAL .
+*        SELECT SINGLE *
+*          FROM mara
+*          INTO wa_mara
+*         WHERE matnr = wa_mara-matnr .
+*      ENDIF.
+
+      PERFORM get_data.
+    WHEN 'BACK' OR 'CANCEL' OR 'EXIT' .
+      LEAVE TO SCREEN 0.
+    WHEN OTHERS.
+  ENDCASE.
+ENDMODULE.
+
+*****9001 SCREEN*******
+MODULE user_command_9001 INPUT.
+
+  CASE ok_code.
+    WHEN 'DISP'.
+*      IF wa_mara-matnr IS NOT INITIAL .
+*        SELECT SINGLE *
+*          FROM mara
+*          INTO wa_mara
+*         WHERE matnr = wa_mara-matnr .
+*      ENDIF.
+
+      PERFORM get_data.
+    WHEN 'BACK' OR 'CANCEL' OR 'EXIT' .
+      LEAVE TO SCREEN 0.
+    WHEN OTHERS.
+  ENDCASE.
+ENDMODULE.
+
+***Now The Perform****
+FORM get_data .
+
+   "FETCHING DATA FROM AUFK TABLE IN LT_AUFK
+  SELECT AUFNR,
+         BUKRS,
+         WERKS
+    FROM AUFK
+    INTO TABLE @DATA(LT_AUFK)
+   WHERE auart = @lv_auart.
+
+  IF LT_AUFK[] IS NOT INITIAL.
+
+    "FETCHING DATA FROM AFPO TABLE IN LT_AFPO
+    SELECT AUFNR,
+           MATNR,
+           PGMNG,
+           MEINS,
+           LTRMI
+      FROM AFPO
+      INTO TABLE @DATA(LT_AFPO)
+      FOR ALL ENTRIES IN @LT_AUFK
+     WHERE AUFNR = @LT_AUFK-AUFNR.
+
+    "FETCHING DATA FROM RESB TABLE IN LT_RESB
+     SELECT AUFNR,
+            RSNUM,
+            RSPOS,
+            MATNR,
+            LGORT,
+            CHARG,
+            BDMNG,
+            MEINS
+       FROM RESB
+       INTO TABLE @DATA(LT_RESB)
+       FOR ALL ENTRIES IN @LT_AUFK
+      WHERE AUFNR = @LT_AUFK-AUFNR.
+
+  ENDIF.
+
+  ""FETCHING DATA FROM MAKT TABLE IN LT_MAKT
+  IF LT_AFPO[] IS NOT INITIAL.
+    SELECT MATNR,
+           MAKTX
+      FROM MAKT
+      INTO TABLE @DATA(LT_MAKT)
+      FOR ALL ENTRIES IN @LT_AFPO
+     WHERE MATNR = @LT_AFPO-MATNR.
+
+  ENDIF.
+
+  "FETCHING THE BOM_DETAILS FROM MAKT TABLE IN LT_MAKT_BOM
+  IF LT_RESB[] IS NOT INITIAL.
+    SELECT MATNR,
+           MAKTX
+      FROM MAKT
+      INTO TABLE @DATA(LT_MAKT_BOM)
+      FOR ALL ENTRIES IN @LT_RESB
+     WHERE MATNR = @LT_RESB-MATNR.
+
+  ENDIF.
+
+
+  "MERGING ALL THE LOCAL TABLE DATA INTO A FINAL TABLE
+
+  LT_FINAL = VALUE #( FOR WA_RESB IN LT_RESB
+                        FOR WA_AFPO IN LT_AFPO
+                        where ( aufnr = WA_RESB-aufnr )
+                        ( AUFNR = |{ VALUE #( LT_AUFK[ AUFNR = WA_RESB-AUFNR ]-AUFNR OPTIONAL ) ALPHA = OUT }|
+                          BUKRS = VALUE #( LT_AUFK[ AUFNR = WA_RESB-AUFNR ]-BUKRS OPTIONAL )
+                          WERKS = VALUE #( LT_AUFK[ AUFNR = WA_RESB-AUFNR ]-WERKS OPTIONAL )
+                          MAKTX = VALUE #( LT_MAKT[ MATNR = WA_AFPO-MATNR ]-MAKTX OPTIONAL )
+                          PGMNG = WA_AFPO-PGMNG
+                          MEINS = WA_AFPO-MEINS
+                          LTRMI = WA_AFPO-LTRMI
+                          RSNUM = WA_RESB-RSNUM
+                          RSPOS = WA_RESB-RSPOS
+                          MATNR = |{ WA_AFPO-MATNR ALPHA = OUT }|
+                          CHARG = WA_RESB-CHARG
+                          BDMNG = WA_RESB-BDMNG
+                          LGORT = WA_RESB-LGORT
+                          MATNR_BOM = WA_RESB-MATNR
+                          MAKTX_BOM = VALUE #( LT_MAKT_BOM[ MATNR = WA_RESB-MATNR ]-MAKTX OPTIONAL )
+                        )
+                     ).
+
+
+ENDFORM.
