@@ -1,0 +1,42 @@
+TABLE-ZPK_INVOICE
+
+PARAMETERS : p_ono TYPE zordno,
+             p_pmd TYPE zpaymentmthd.
+DATA : lv_user(20) TYPE C.
+
+
+CALL FUNCTION 'ENQUEUE_EZ_INVOICE'
+  EXPORTING
+    mode_zpk_invoice = 'E'
+    mandt            = sy-mandt
+    order_number     = p_ono
+    x_order_number   = ' '
+    _scope           = '2'
+    _wait            = ' '
+    _collect         = ' '
+  EXCEPTIONS
+    foreign_lock     = 1
+    system_failure   = 2
+    OTHERS           = 3.
+IF sy-subrc <> 0.
+  lv_user = sy-msgv1.
+  MESSAGE e000(zmessage_invoice) WITH p_ono lv_user .
+ELSE.
+  UPDATE zpk_invoice SET mode_of_payment = p_pmd WHERE order_number = p_ono.
+  IF SY-SUBRC = 0.
+  WRITE : TEXT-000.
+  ELSE.
+  WRITE : TEXT-001.
+  ENDIF.
+
+  CALL FUNCTION 'DEQUEUE_EZ_INVOICE'
+   EXPORTING
+     MODE_ZPK_INVOICE       = 'E'
+     MANDT                  = SY-MANDT
+     ORDER_NUMBER           = p_ono
+     X_ORDER_NUMBER         = ' '
+     _SCOPE                 = '3'
+     _SYNCHRON              = ' '
+     _COLLECT               = ' '
+            .
+ENDIF.
