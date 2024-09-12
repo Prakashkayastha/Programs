@@ -1,0 +1,47 @@
+1-->Sorting using coding for ALV reports.
+
+ls_sort TYPE SLIS_T_SORTINFO_ALV,
+wa_sort TYPE SLIS_SORTINFO_ALV,
+
+  WA_sort-fieldname = 'EBELN'.
+  wa_sort-up = 'X'. ***For Descending use DOWN instead of UP*****
+  APPEND wa_sort TO ls_sort.
+
+
+2----->For filtering values in ALV reports through coding.
+
+lt_filter TYPE SLIS_T_FILTER_ALV,
+ls_filter TYPE slis_filter_alv.
+
+
+ ls_filter-fieldname = 'WERKS'.        Sign -> I/E
+  ls_filter-tabname = 'lt_final'.      Option -> Relational Operator(EQ,BT,LT,GT)
+  ls_filter-sign0 = 'I'.               Low-Low Value we r passing
+  ls_filter-optio = 'EQ'.              High-High value we r passing
+  ls_filter-valuf_int = 'Z900'.
+  APPEND ls_filter TO lt_filter.
+
+3--->To getting a output with in a range
+ls_filter-fieldname = 'VBTYP'.
+ls_filter-tabname = 'lt_final'
+ls_filter-sign0 = 'I'. "Including
+ls_filter-optio = 'BT'. "Between Range
+ls_filter-valuf_int = 'A'.
+ls_filter-valut_int = 'C'.
+APPEND ls_filter TO lt_filter.
+clear : ls_filter.
+
+4---> To get output excluding some value of a particular field
+ls_filter-fieldname = 'POSNR'.
+ls_filter-tabname = 'lt_final'.
+ls_filter-sign0 = 'E'."Excluding
+ls_filter-optio = 'EQ'.
+ls_filter-valuf_int = '000010'.
+APPEND ls_filter TO lt_filter.
+clear : ls_filter.
+
+
+
+
+
+
