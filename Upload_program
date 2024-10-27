@@ -1,0 +1,67 @@
+TYPE-POOLS truxs.
+PARAMETERS : p_file TYPE  rlgrap-filename.
+
+
+
+TYPES : BEGIN OF t_tab,
+          emp_id     TYPE zemp_ids,
+          emp_name   TYPE zemp_name,
+          emp_age    TYPE zemp_age,
+          emp_salary TYPE yde_salary,
+        END OF t_tab.
+
+ DATA : t_upload TYPE STANDARD TABLE OF t_tab,
+        wa_upload TYPE t_tab,
+        it_type TYPE truxs_t_text_data.
+
+  AT SELECTION-SCREEN ON VALUE-REQUEST FOR p_file.
+
+  CALL FUNCTION 'F4_FILENAME'
+   EXPORTING
+     "PROGRAM_NAME        = SYST-CPROG
+     "DYNPRO_NUMBER       = SYST-DYNNR
+     FIELD_NAME          = 'P_FILE'
+   IMPORTING
+     FILE_NAME           = p_file.
+
+
+  START-OF-SELECTION.
+  CALL FUNCTION 'TEXT_CONVERT_XLS_TO_SAP'
+    EXPORTING
+*     I_FIELD_SEPERATOR          = it_type
+     I_LINE_HEADER              = 'X'
+      i_tab_raw_data             = it_type
+      i_filename                 = p_file
+    TABLES
+      i_tab_converted_data       = t_upload[]
+   EXCEPTIONS
+     CONVERSION_FAILED          = 1
+     OTHERS                     = 2
+            .
+  IF sy-subrc <> 0.
+MESSAGE ID sy-msgid TYPE sy-msgty NUMBER sy-msgno
+            WITH sy-msgv1 sy-msgv2 sy-msgv3 sy-msgv4.
+  ENDIF.
+
+ END-OF-SELECTION.
+
+
+DATA : ls_cc_imp1 TYPE ZPK_EMPLOYEES,
+       lt_cc_imp1 TYPE STANDARD TABLE OF ZPK_EMPLOYEES.
+
+LOOP AT t_upload INTO wa_upload.
+  ls_cc_imp1-mandt = sy-mandt.
+  ls_cc_imp1-emp_id = wa_upload-emp_id.
+  ls_cc_imp1-emp_name = wa_upload-emp_name.
+  ls_cc_imp1-emp_age = wa_upload-emp_age.
+  ls_cc_imp1-emp_salary = wa_upload-emp_salary.
+
+  APPEND ls_cc_imp1 TO lt_cc_imp1.
+  MODIFY ZPK_EMPLOYEES FROM TABLE lt_cc_imp1.
+ENDLOOP.
+
+IF sy-subrc = 0.
+  Write : 'The excel data updated successfully'.
+  cl_demo_output=>display( t_upload ).
+
+ENDIF.
